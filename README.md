@@ -24,6 +24,8 @@ cs224w_final_project/
 ├── predictions/                   # Inference outputs
 ├── test/                          # Test scripts
 │
+├── CS224W_Final_projecvt (1).ipynb  # 📓 Main Colab notebook with examples
+│
 ├── ab_train.py                    # Original RefineGNN training script
 ├── ab_train_with_antigen.py       # Antigen-aware training script
 ├── ab_train_with_antigen_final.py # Final training script with logging
@@ -47,6 +49,18 @@ cs224w_final_project/
 ├── LICENSE
 └── README.md
 ```
+
+## Quick Start with Colab
+
+The easiest way to get started is with the **Google Colab notebook**:
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/simone-surdi/cs224w_final_project/blob/main/CS224W_Final_projecvt%20(1).ipynb)
+
+The notebook includes:
+- Dataset inspection and exploration
+- Training examples for all CDR types
+- Inference and visualization
+- Result analysis
 
 ## Installation
 
@@ -85,10 +99,107 @@ The dataset is derived from the **Structural Antibody Database (SAbDab)**, conta
 
 ## Usage
 
+### Inspecting Dataset Structure
+
+To explore the structure of the `.jsonl` data files:
+
+```python
+# =============================================================================
+# JSONL Data Inspector
+# Recursively scans a folder for .jsonl files and prints the structure of the
+# first JSON object in each file (keys, types, sample values).
+# Useful for understanding the data format without loading entire files.
+# =============================================================================
+
+import os
+import json
+
+# --- CONFIGURATION ---
+DATA_FOLDER_PATH = "./data/"
+
+def inspect_jsonl_structure(source_folder):
+    if not os.path.exists(source_folder):
+        print(f"Error: Folder '{source_folder}' does not exist.")
+        return
+
+    print(f"Scanning '{source_folder}' for .jsonl files...\n")
+
+    files_found = 0
+
+    for root, dirs, files in os.walk(source_folder):
+        for file in files:
+            if file.endswith(".jsonl"):
+                files_found += 1
+                file_path = os.path.join(root, file)
+
+                print("=" * 80)
+                print(f"FILE: {file_path}")
+                print("-" * 80)
+
+                try:
+                    with open(file_path, 'r') as f:
+                        first_line = f.readline()
+
+                        if not first_line:
+                            print("  [EMPTY FILE]")
+                            continue
+
+                        try:
+                            data = json.loads(first_line)
+
+                            for key, value in data.items():
+                                val_str = str(value)
+                                type_str = type(value).__name__
+
+                                if isinstance(value, list):
+                                    summary = f"List with {len(value)} items"
+                                    if len(value) > 0:
+                                        summary += f" (First: {str(value[0])[:50]}...)"
+                                    print(f"  • {key} ({type_str}): {summary}")
+
+                                elif isinstance(value, dict):
+                                    summary = f"Dict with keys {list(value.keys())}"
+                                    print(f"  • {key} ({type_str}): {summary}")
+                                    if key == 'coords':
+                                        for k, v in value.items():
+                                            v_len = len(v) if isinstance(v, list) else '?'
+                                            print(f"      - {k}: List of {v_len} coords")
+
+                                elif isinstance(value, str):
+                                    if len(val_str) > 100:
+                                        print(f"  • {key} ({type_str}): {val_str[:100]}... [Length: {len(val_str)}]")
+                                    else:
+                                        print(f"  • {key} ({type_str}): {val_str}")
+                                else:
+                                    print(f"  • {key} ({type_str}): {value}")
+
+                        except json.JSONDecodeError:
+                            print("  [INVALID JSON] Could not parse first line.")
+
+                except Exception as e:
+                    print(f"  [ERROR READING FILE] {e}")
+
+                print("\n")
+
+    if files_found == 0:
+        print("No .jsonl files found.")
+    else:
+        print(f"Done. Inspected {files_found} files.")
+
+# --- EXECUTION ---
+inspect_jsonl_structure(DATA_FOLDER_PATH)
+```
+
 ### Training
 
 **Train antigen-aware model (CDR-H1):**
 ```bash
+# =============================================================================
+# Train the antigen-aware RefineGNN model for CDR-H1 prediction.
+# Uses cross-attention to incorporate antigen structural features.
+# Outputs: checkpoints saved to ckpts/antigen_aware/cdr_type_1/
+# =============================================================================
+
 python ab_train_with_antigen_final.py \
     --train_path data/sabdab/hcdr1_cluster/train_data_with_antigen_unique.jsonl \
     --val_path data/sabdab/hcdr1_cluster/val_data_with_antigen_unique.jsonl \
@@ -100,6 +211,12 @@ python ab_train_with_antigen_final.py \
 
 **Train antigen-aware model (CDR-H3):**
 ```bash
+# =============================================================================
+# Train the antigen-aware RefineGNN model for CDR-H3 prediction.
+# CDR-H3 is the most variable loop and hardest to predict.
+# Outputs: checkpoints saved to ckpts/antigen_aware/cdr_type_3/
+# =============================================================================
+
 python ab_train_with_antigen_final.py \
     --train_path data/sabdab/hcdr3_cluster/train_data_with_antigen_unique.jsonl \
     --val_path data/sabdab/hcdr3_cluster/val_data_with_antigen_unique.jsonl \
@@ -111,20 +228,64 @@ python ab_train_with_antigen_final.py \
 
 ### Inference
 
-```bash
-python inference.py \
-    --checkpoint ckpts/antigen_aware/cdr_type_3/model.best.ckpt \
-    --test_path data/sabdab/hcdr3_cluster/test_data_with_antigen_unique.jsonl \
-    --save_dir predictions/
+```python
+# =============================================================================
+# Run inference on a test sample using a trained checkpoint.
+# Loads the model, predicts CDR structure, visualizes the result,
+# and optionally saves predicted/ground-truth PDB files.
+# =============================================================================
+
+from inference import CDRPredictor
+from visualize_cdr import visualize_inference_result
+
+# Step 1: Load model and predict
+predictor = CDRPredictor('ckpts/antigen_aware/cdr_type_3/model.best.ckpt')
+loader, data = predictor.load_test_data('data/sabdab/hcdr3_cluster/test_data_with_antigen_unique.jsonl')
+result = predictor.predict_sample(loader, random_sample=True)
+
+# Step 2: Visualize (result goes directly to visualization)
+view = visualize_inference_result(result)
+view.show()
+
+# Step 3 (optional): Save files
+predictor.save_structures(result, save_dir='predictions/')
 ```
 
 ### Visualization
 
 ```bash
-python visualize_cdr.py \
-    --pred_pdb predictions/sample_pred.pdb \
-    --true_pdb predictions/sample_true.pdb \
-    --output plots/comparison.png
+# =============================================================================
+# Generate training curves comparing models with and without antigen conditioning.
+# Plots validation PPL and RMSD across epochs for all CDR types.
+# Outputs: training curve plots saved to plots/
+#
+# IMPORTANT: Need to have antigen_no folder, which is obtained by training
+# the model removing the antigen conditioning component, adding --no_antigen 
+# in the training script, for all 3 CDRs, for this script below to work.
+# =============================================================================
+
+python plot_from_checkpoints.py \
+    --ckpt_dirs ckpts/antigen_aware/cdr_type_1 ckpts/antigen_no/cdr_type_1 \
+                ckpts/antigen_aware/cdr_type_2 ckpts/antigen_no/cdr_type_2 \
+                ckpts/antigen_aware/cdr_type_3 ckpts/antigen_no/cdr_type_3 \
+    --names "CDR1 + Antigen" "CDR1 No Antigen" \
+            "CDR2 + Antigen" "CDR2 No Antigen" \
+            "CDR3 + Antigen" "CDR3 No Antigen" \
+    --save_dir plots/
+```
+
+To generate the `antigen_no` checkpoints, train without antigen conditioning:
+
+```bash
+# Train baseline (no antigen) for CDR-H1
+python ab_train_with_antigen_final.py \
+    --train_path data/sabdab/hcdr1_cluster/train_data_with_antigen_unique.jsonl \
+    --val_path data/sabdab/hcdr1_cluster/val_data_with_antigen_unique.jsonl \
+    --test_path data/sabdab/hcdr1_cluster/test_data_with_antigen_unique.jsonl \
+    --save_dir ckpts/antigen_no/cdr_type_1 \
+    --cdr_type 1 \
+    --epochs 10 \
+    --no_antigen
 ```
 
 ## Results
@@ -179,12 +340,6 @@ python visualize_cdr.py \
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgements
-
-- Stanford CS224W course staff
-- Sonny Young and Kif Lim for the previous project foundation
-- RefineGNN authors for the base implementation
-- SAbDab database maintainers
 ## Acknowledgements
 
 - Stanford CS224W course staff

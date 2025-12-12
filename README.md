@@ -3,8 +3,11 @@
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-1.9+-ee4c2c.svg)](https://pytorch.org/)
+[![Medium](https://img.shields.io/badge/Medium-Blog%20Post-black)](https://medium.com/@simonesurdi/antigen-aware-antibody-cdr-structure-prediction-with-cross-attention-graph-neural-networks-bcd870b6b467)
 
 This repository contains the code for the **Stanford CS224W (Machine Learning with Graphs)** final project exploring antigen-aware antibody CDR structure prediction using cross-attention mechanisms integrated into RefineGNN.
+
+📖 **Read the full blog post:** [Antigen-Aware Antibody CDR Structure Prediction with Cross-Attention Graph Neural Networks](https://medium.com/@simonesurdi/antigen-aware-antibody-cdr-structure-prediction-with-cross-attention-graph-neural-networks-bcd870b6b467)
 
 ## Overview
 

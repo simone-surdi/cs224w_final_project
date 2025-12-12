@@ -1,0 +1,9 @@
+./data/sabdab/hcdr1_cluster: 4735 unique PDBs
+./data/sabdab/hcdr3_cluster: 4736 unique PDBs
+
+Common to both: 4735
+Only in ./data/sabdab/hcdr1_cluster: 0
+Only in ./data/sabdab/hcdr3_cluster: 1
+
+--- PDBs only in ./data/sabdab/hcdr3_cluster ---
+6wor
